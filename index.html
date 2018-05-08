@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-118809460-1"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'UA-118809460-1');
+    </script>
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+    <title>Nickname service on Nebulas </title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="lib/bootstrap-4.1.0-dist/css/bootstrap.min.css">
+    <!-- Custom styles for this template -->
+    <link href="customStyle.css" rel="stylesheet">
+  </head>
+  <body class="text-center">
+    <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+      <header class="masthead mb-auto">
+       <div class="inner">
+         <h3 class="masthead-brand">BAAM!</h3>
+         <nav class="nav nav-masthead justify-content-center" id="navMenu">
+           <a class="nav-link active" id="homeTab">Home</a>
+           <a class="nav-link" id="getAllBtn">Nicknames I own</a>
+         </nav>
+       </div>
+      </header>
+      <main id="home" role="main" class="inner cover">
+        <h1 class="cover-heading">Nickname service</h1>
+        <p class="lead">Type in the nickname you wish to use, if it's not claimed, You can have it!</p>
+        <p class="lead">
+          <input id="shortName" type="text">
+         <button id="getBtn" class="btn btn-secondary">Check</button>
+        </p>
+        <div id="homeWaiting" class="hide">Waiting for Nebulas blockchain to return...</div>
+        <div id="result" class="hide">
+          The above short name resolves to:
+          <div id="resolveTo"></div>
+          Claimed by:
+          <div id="author"></div>
+        </div>
+        <div id="claimNew" class="hide">
+          Great, you can claim the above short name. Paste in your Nebulas wallet address or other long text you wish to shortern here (64chars max):
+          <div class="top-buffer">
+            <input id="longName" type="text" class="form-control" aria-label="Large" aria-describedby="inputGroup-sizing-sm">
+          </div>
+          <div class="top-buffer justify-content-center">
+            <button id="buyBtn" class="btn btn-lg">Claim</button>
+          </div>
+        </div>
+      </main>
+      <main id="allIOwn" class="hide">
+        <div id="waiting">Waiting for Nebulas blockchain to return...</div>
+        <h1 id="noShortname" class="cover-heading hide">Looks like you don't own any nicknames yet. Go to Home tab to claim one!</h1>
+        <div id="showAll" class="hide">
+          <h1 class="cover-heading">Nickname(s) you own:</h1>
+          <div id="allShortnames">
+            <ul id="shortnameItems" class="list-group list-group-flush">
+            </ul>
+          </div>
+        </div>
+      </main>
+      <main id="noExtension" class="hide">
+        <p class="lead">
+          Unfortunately, you need WebExtensionWallet to use this DApp.
+          You can find installation instructions here: <a href="https://github.com/ChengOrangeJu/WebExtensionWallet">https://github.com/ChengOrangeJu/WebExtensionWallet</a>
+          If you believe this is a mistake, drop me a line will you? Thanks.
+        </p>
+      </main>
+      <footer class="mastfoot mt-auto">
+        <div class="inner">
+          This is a nickname service (shorterned address) built on Nebulas mainnet
+         <p>Made with <3 by <a href="http://ahtang.com">Alan 汤包</a></p>
+        </div>
+      </footer>
+    </div>
+
+    <script src="lib/nebPay.js"></script>
+    <script src="lib/jquery-3.3.1.min.js"></script>
+    <script src="lib/bootstrap-4.1.0-dist/js/bootstrap.min.js"></script>
+  </body>
+  <script>
+    var NebPay = require("nebpay");     //https://github.com/nebulasio/nebPay
+    var nebPay = new NebPay();
+    //to check if the extension is installed
+    //if the extension is installed, var "webExtensionWallet" will be injected in to web page
+    if(typeof(webExtensionWallet) === "undefined"){
+        $("#home").addClass("hide");
+        $("#allIOwn").addClass("hide");
+        $("#noExtension").removeClass("hide");
+        $("#navMenu").addClass("hide");
+        // $("#noExtension").removeClass("hide")
+    }else{
+        // $("#search_value").attr("disabled",false)
+        // $("#search").attr("disabled",false)
+        console.log("webExtensionWallet found");
+    }
+    var dappAddress = "n1tMicsrXs7m3fmtywC9zjMDVUBYJBAg5p3";
+
+    $("#getBtn").click(function() {
+      console.log("getBtn clicked");
+      $("#homeWaiting").removeClass("hide");
+      var to = dappAddress;
+      var value = "0";
+      var callFunction = "get";
+      var callArgs = "[\"" + $("#shortName").val() + "\"]"; //in the form of ["args"]
+      nebPay.simulateCall(to, value, callFunction, callArgs, {    //使用nebpay的simulateCall接口去执行get查询, 模拟执行.不发送交易,不上链
+          listener: handleSearch
+      });
+    });
+    function handleSearch(resp) {
+      $("#homeWaiting").addClass("hide");
+      var result = resp.result;
+      console.log("return of simulateCall: " + JSON.stringify(result));
+      if (result) {
+        try {
+          result = JSON.parse(result);
+        } catch (e) {
+          console.log(e);
+        }
+        if (result) {
+          console.log("result after json.parse" + result);
+          $("#claimNew").addClass("hide");
+          $("#result").removeClass("hide");
+          $("#resolveTo").text(result.longname);
+          $("#author").text(result.author);
+        } else {
+          // display claim div
+          $("#result").addClass("hide");
+          $("#claimNew").removeClass("hide");
+        }
+      } else {
+        // display claim div
+        $("#result").addClass("hide");
+        $("#claimNew").removeClass("hide");
+      }
+    }
+
+    $("#buyBtn").click(function() {
+      console.log("buy clicked");
+      var to = dappAddress;
+      var value = "0";
+      var callFunction = "claim";
+      var callArgs = "[\"" +$("#shortName").val() + "\",\"" + $("#longName").val() + "\"]"; //in the form of ["args"]
+      nebPay.call(to, value, callFunction, callArgs, {    //使用nebpay的simulateCall接口去执行get查询, 模拟执行.不发送交易,不上链
+          listener: setReturn      //指定回调函数
+      });
+    });
+    function setReturn(resp) {
+      console.log("response of set: " + JSON.stringify(resp.result));
+    }
+
+    $("#getAllBtn").click(function() {
+      $("#homeTab").removeClass("active");
+      $("#getAllBtn").addClass("active");
+      var to = dappAddress;
+      var value = "0";
+      var callFunction = "getAll";
+      var callArgs = ""; //in the form of ["args"]
+      nebPay.simulateCall(to, value, callFunction, callArgs, {    //使用nebpay的simulateCall接口去执行get查询, 模拟执行.不发送交易,不上链
+          listener: getAllReturn      //指定回调函数
+      });
+      $("#home").addClass("hide");
+      $("#allIOwn").removeClass("hide");
+    });
+    function getAllReturn(res) {
+      $("#waiting").addClass("hide");
+      var result = res.result;
+      if (result) {
+        try {
+          result = JSON.parse(result);
+        } catch (e) {
+          console.log(e);
+        }
+        if (result) {
+          $("#showAll").removeClass("hide");
+          var newHTML = $.map(result, function(value) {
+              return('<li class="list-group-item list-group-item-dark">' + value + '</li>');
+          });
+          $("#shortnameItems").html(newHTML.join(""));
+        } else {
+          console.log("soemthing went wrong parsing result");
+        }
+      } else {
+        $("#noShortname").removeClass("hide");
+      }
+    }
+
+    $("#homeTab").click(function() {
+      $("#homeTab").addClass("active");
+      $("#getAllBtn").removeClass("active");
+      $("#allIOwn").addClass("hide");
+      $("#home").removeClass("hide");
+    });
+
+    function commonReturn(resp) {
+      console.log("response of set: " + JSON.stringify(resp.result));
+    }
+
+    $("#changelBtn").click(function() {
+      var to = dappAddress;
+      var value = "0";
+      var callFunction = "change";
+      var callArgs = "[\"" +$("#shortName").val() + "\",\"" + $("#longName").val() + "\"]"; //in the form of ["args"]
+      nebPay.call(to, value, callFunction, callArgs, {    //使用nebpay的simulateCall接口去执行get查询, 模拟执行.不发送交易,不上链
+          listener: commonReturn      //指定回调函数
+      });
+    });
+
+  </script>
+</html>
